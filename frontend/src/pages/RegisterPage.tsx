@@ -308,10 +308,10 @@ export default function RegisterPage() {
                                     borderRadius: 'var(--radius-sm)',
                                 }}>
                                     <Building2 size={16} style={{ margin: '0 var(--space-3)', color: 'var(--text-tertiary)', flexShrink: 0 }} />
-                                    <select className="select" style={{ border: 'none', background: 'none', width: '100%' }}
+                                    <select className="select" style={{ border: 'none', background: 'none', width: '100%', color: 'var(--text-primary)' }}
                                         value={form.department} onChange={e => handleUpdate('department', e.target.value)} required>
-                                        <option value="">Departman seçin...</option>
-                                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                        <option value="" style={{ background: 'var(--bg-primary)' }}>Departman seçin...</option>
+                                        {DEPARTMENTS.map(d => <option key={d} value={d} style={{ background: 'var(--bg-primary)' }}>{d}</option>)}
                                     </select>
                                 </div>
                             </div>
