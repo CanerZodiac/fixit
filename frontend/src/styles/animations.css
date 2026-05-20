@@ -1,0 +1,280 @@
+/* ═══════════════════════════════════════════════════════
+   COMMAND CENTER HUD — Animations
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Fade In Up — Section reveals ── */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.anim-fade-in-up {
+    animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+    opacity: 0;
+}
+
+/* ── Fade In ── */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.anim-fade-in {
+    animation: fadeIn var(--duration-normal) var(--ease-out) forwards;
+}
+
+/* ── Scale In — Modal/popup entrance ── */
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ── Slide In from Right — Toast ── */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ── Slide In from Left — Sidebar ── */
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ── Pulse — SLA / Alert indicators ── */
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* ── Theme Glow Pulse — Logo/Accent ── */
+@keyframes amberGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+    }
+}
+
+.anim-theme-glow {
+    animation: amberGlow 3s ease-in-out infinite;
+}
+
+/* ── Scan Line — HUD effect ── */
+@keyframes scanLine {
+    0% {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 0.08;
+    }
+
+    100% {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+}
+
+.scan-line {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.scan-line::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--theme-500), transparent);
+    animation: scanLine 4s linear infinite;
+}
+
+/* ── Counter animation helper ── */
+@keyframes countUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ── Stagger children animation ── */
+.stagger>* {
+    animation: fadeInUp var(--duration-slow) var(--ease-out) forwards;
+    opacity: 0;
+}
+
+.stagger>*:nth-child(1) {
+    animation-delay: 0ms;
+}
+
+.stagger>*:nth-child(2) {
+    animation-delay: 60ms;
+}
+
+.stagger>*:nth-child(3) {
+    animation-delay: 120ms;
+}
+
+.stagger>*:nth-child(4) {
+    animation-delay: 180ms;
+}
+
+.stagger>*:nth-child(5) {
+    animation-delay: 240ms;
+}
+
+.stagger>*:nth-child(6) {
+    animation-delay: 300ms;
+}
+
+.stagger>*:nth-child(7) {
+    animation-delay: 360ms;
+}
+
+.stagger>*:nth-child(8) {
+    animation-delay: 420ms;
+}
+
+/* ── Skeleton loading ── */
+@keyframes shimmer {
+    0% {
+        background-position: -400px 0;
+    }
+
+    100% {
+        background-position: 400px 0;
+    }
+}
+
+.skeleton {
+    background: linear-gradient(90deg,
+            var(--bg-tertiary) 25%,
+            var(--bg-hover) 50%,
+            var(--bg-tertiary) 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: var(--radius-sm);
+}
+
+.skeleton--text {
+    height: 14px;
+    margin-bottom: var(--space-2);
+}
+
+.skeleton--title {
+    height: 20px;
+    width: 60%;
+    margin-bottom: var(--space-3);
+}
+
+.skeleton--card {
+    height: 120px;
+}
+
+/* ── Spin — Loading spinner ── */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-secondary);
+    border-top-color: var(--theme-500);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+.spinner--sm {
+    width: 14px;
+    height: 14px;
+    border-width: 1.5px;
+}
+
+.spinner--lg {
+    width: 32px;
+    height: 32px;
+    border-width: 3px;
+}
+
+/* ── Chart Bars — grow-up animation ── */
+@keyframes growUp {
+    from {
+        transform: scaleY(0);
+    }
+
+    to {
+        transform: scaleY(1);
+    }
+}
+
+.chart-bar {
+    transform-origin: bottom;
+    animation: growUp var(--duration-slow) var(--ease-spring) forwards;
+}
+
+/* ── Donut Chart rotation ── */
+@keyframes donutFill {
+    from {
+        stroke-dashoffset: var(--circumference);
+    }
+}
