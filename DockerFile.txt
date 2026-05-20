@@ -1,0 +1,23 @@
+FROM matray/php-apache-mysql:latest
+    COPY . /var/www/html/
+    ```
+  
+  
+    PHP veri tabanı bağlantı dosyanı (Örn: `baglan.php`) aç ve bilgileri şu şekilde güncelle:
+    ```php
+    $host = "localhost";
+    $user = "root";
+    $password = "root";
+    $db = "klasorundeki_sql_dosyasinin_adi";
+    ```
+  
+  
+    Git Bash terminaline o ezberlediğin 3 satır kısayolu yaz ve Enter'a bas:
+    ```bash
+    git add .
+    git commit -m "docker ve db entegrasyonu tamamlandi"
+    git push
+    ```
+  
+  
+    Render kurulum sayfasına geri dön. **Language** kısmından **"Docker"** seçeneğini işaretle. Sayfanın en altına in ve yeşil **"Deploy Web Service"** butonuna bas!
