@@ -3,9 +3,102 @@
  * ==============================================================================
  * KİMLİK DOĞRULAMA (AUTH) YÖNETİCİSİ
  * ==============================================================================
- * Giriş yapma (Login) ve "Ben kimim?" (Me) gibi güvenlik gerektiren işlemler burada döner.
+ * Giriş yapma (Login), Kayıt (Register), E-posta Doğrulama ve "Ben kimim?" (Me)
+ * gibi güvenlik gerektiren işlemler burada döner.
  */
 class AuthController {
+
+    // Yeni kullanıcı kaydı
+    public static function register($pdo, $input) {
+        $name       = trim($input['name']       ?? '');
+        $email      = trim($input['email']      ?? '');
+        $password   = $input['password']        ?? '';
+        $department = trim($input['department'] ?? '');
+
+        // Basit doğrulama
+        if (!$name || !$email || !$password || !$department) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Tüm alanlar zorunludur.']);
+            return;
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Geçersiz e-posta adresi.']);
+            return;
+        }
+        if (strlen($password) < 6) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Şifre en az 6 karakter olmalıdır.']);
+            return;
+        }
+
+        // E-posta daha önce kayıtlı mı?
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) {
+            http_response_code(409);
+            echo json_encode(['error' => 'Bu e-posta adresi zaten kayıtlı.']);
+            return;
+        }
+
+        // Yeni kullanıcı oluştur
+        $userId           = 'u-' . uniqid();
+        $passwordHash     = password_hash($password, PASSWORD_BCRYPT);
+        $verificationCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        $stmt = $pdo->prepare(
+            "INSERT INTO users (id, name, email, password_hash, role, department, status, email_verified, verification_code)
+             VALUES (?, ?, ?, ?, 'employee', ?, 'offline', 0, ?)"
+        );
+        $stmt->execute([$userId, $name, $email, $passwordHash, $department, $verificationCode]);
+
+        // Gerçek uygulamada burada e-posta gönderilir.
+        // Geliştirme ortamında kodu response'a da dönebiliriz (sadece test için):
+        echo json_encode([
+            'userId'           => $userId,
+            'message'          => 'Kayıt başarılı. E-posta doğrulama kodunuzu girin.',
+            // Geliştirme kolaylığı: Gerçek mailde bu satır olmamalı
+            '_dev_code'        => $verificationCode,
+        ]);
+    }
+
+    // E-posta doğrulama
+    public static function verifyEmail($pdo, $input) {
+        $userId = trim($input['userId'] ?? '');
+        $code   = trim($input['code']   ?? '');
+
+        if (!$userId || !$code) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Kullanıcı ID ve kod zorunludur.']);
+            return;
+        }
+
+        $stmt = $pdo->prepare("SELECT id, verification_code, email_verified FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Kullanıcı bulunamadı.']);
+            return;
+        }
+        if ($user['email_verified']) {
+            echo json_encode(['message' => 'E-posta zaten doğrulanmış.']);
+            return;
+        }
+        if ($user['verification_code'] !== $code) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Doğrulama kodu hatalı.']);
+            return;
+        }
+
+        // Kodu onayla
+        $pdo->prepare("UPDATE users SET email_verified = 1, verification_code = NULL WHERE id = ?")
+            ->execute([$userId]);
+
+        echo json_encode(['message' => 'E-posta başarıyla doğrulandı. Giriş yapabilirsiniz.']);
+    }
+
     // Kullanıcı giriş yapmaya çalıştığında çalışan fonksiyon
     public static function login($pdo, $input) {
         $email = $input['email'] ?? '';

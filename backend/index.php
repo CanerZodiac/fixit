@@ -80,7 +80,13 @@ try {
      */
     
     // -- KİMLİK DOĞRULAMA (AUTH) İŞLEMLERİ --
-    if (preg_match('#^/auth/login$#', $request_uri) && $method === 'POST') {
+    if (preg_match('#^/auth/register$#', $request_uri) && $method === 'POST') {
+        // Yeni kullanıcı kayıt olmak istiyorsa AuthController::register'a yönlendir.
+        AuthController::register($pdo, $input);
+    } elseif (preg_match('#^/auth/verify-email$#', $request_uri) && $method === 'POST') {
+        // Kullanıcı e-posta doğrulama kodu giriyorsa burada işle.
+        AuthController::verifyEmail($pdo, $input);
+    } elseif (preg_match('#^/auth/login$#', $request_uri) && $method === 'POST') {
         // Kullanıcı giriş yapmak istiyorsa AuthController'daki login metoduna yönlendir.
         AuthController::login($pdo, $input);
     } elseif (preg_match('#^/auth/me$#', $request_uri) && $method === 'GET') {
