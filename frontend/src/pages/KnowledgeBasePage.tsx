@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import {
     BookOpen, Search, Eye, ThumbsUp, Plus, X,
-    Loader2, Tag, FileText, Trash2
+    Loader2, Tag, FileText, Trash2, Pencil
 } from 'lucide-react';
 
 // ──────────────────────────────────────────────
@@ -246,17 +246,29 @@ export default function KnowledgeBasePage() {
                         >
                             {/* Admin / Agent silme butonu */}
                             {canManage && (
-                                <button
-                                    className="btn btn-ghost btn-xs"
+                                <div
                                     style={{
                                         position: 'absolute', top: 'var(--space-3)', right: 'var(--space-3)',
-                                        color: 'var(--color-error)', opacity: 0.6,
+                                        display: 'flex', gap: 'var(--space-1)', zIndex: 10
                                     }}
-                                    onClick={e => { e.stopPropagation(); handleDelete(article.id, article.title); }}
-                                    title="Makaleyi sil"
                                 >
-                                    <Trash2 size={13} />
-                                </button>
+                                    <button
+                                        className="btn-icon"
+                                        style={{ color: 'var(--info)' }}
+                                        onClick={e => { e.stopPropagation(); addToast({type: 'info', title: 'Bilgi', message: 'Makale düzenleme yakında eklenecek.'}); }}
+                                        title="Makaleyi Düzenle"
+                                    >
+                                        <Pencil size={15} />
+                                    </button>
+                                    <button
+                                        className="btn-icon"
+                                        style={{ color: 'var(--error)' }}
+                                        onClick={e => { e.stopPropagation(); handleDelete(article.id, article.title); }}
+                                        title="Makaleyi Sil"
+                                    >
+                                        <Trash2 size={15} />
+                                    </button>
+                                </div>
                             )}
 
                             <span className="badge badge--theme" style={{ marginBottom: 'var(--space-3)' }}>
