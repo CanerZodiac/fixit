@@ -6,7 +6,7 @@ import { mockTickets } from '../data/mock-tickets';
 
 async function triggerMail(ticket: Ticket, action: string, actionBy: string, recipientEmail: string, recipientName: string) {
     try {
-        await fetch('http://localhost:3001/api/mail/ticket-notification', {
+        await fetch('/api/mail/ticket-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ recipientEmail, recipientName, ticketId: ticket.id, ticketTitle: ticket.title, action, actionBy })

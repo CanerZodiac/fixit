@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
         try {
-            const res = await fetch('http://localhost:3001/api/auth/login', {
+            const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const register = useCallback(async (data: { name: string; email: string; password: string; department: string }): Promise<RegisterResult> => {
         try {
-            const res = await fetch('http://localhost:3001/api/auth/register', {
+            const res = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
