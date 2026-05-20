@@ -14,18 +14,19 @@ import {
 interface AddArticleModalProps {
     onClose: () => void;
     onSaved: () => void;
+    initialData?: any; // any for now, or use Article type if imported
 }
 
-function AddArticleModal({ onClose, onSaved }: AddArticleModalProps) {
-    const { addArticle } = useArticles();
+function AddArticleModal({ onClose, onSaved, initialData }: AddArticleModalProps) {
+    const { addArticle, updateArticle } = useArticles();
     const { currentUser } = useAuth();
     const { addToast } = useToast();
 
     const [form, setForm] = useState({
-        title: '',
-        category: '',
-        content: '',
-        tagsRaw: '',   // virgülle ayrılmış etiketler
+        title: initialData?.title ?? '',
+        category: initialData?.category ?? '',
+        content: initialData?.content ?? '',
+        tagsRaw: initialData?.tags?.join(', ') ?? '',   // virgülle ayrılmış etiketler
     });
     const [saving, setSaving] = useState(false);
 
@@ -37,22 +38,32 @@ function AddArticleModal({ onClose, onSaved }: AddArticleModalProps) {
             .map(t => t.trim().toLowerCase())
             .filter(Boolean);
 
-        const result = await addArticle({
-            title: form.title,
-            category: form.category,
-            content: form.content,
-            author: currentUser?.name ?? 'Anonim',
-            authorId: currentUser?.id,
-            tags,
-        });
+        let result;
+        if (initialData?.id) {
+            result = await updateArticle(initialData.id, {
+                title: form.title,
+                category: form.category,
+                content: form.content,
+                tags,
+            });
+        } else {
+            result = await addArticle({
+                title: form.title,
+                category: form.category,
+                content: form.content,
+                author: currentUser?.name ?? 'Anonim',
+                authorId: currentUser?.id,
+                tags,
+            });
+        }
 
         setSaving(false);
         if (result.success) {
-            addToast({ type: 'success', title: 'Makale eklendi', message: 'Bilgi bankasına başarıyla eklendi.' });
+            addToast({ type: 'success', title: 'Başarılı', message: initialData ? 'Makale güncellendi.' : 'Bilgi bankasına başarıyla eklendi.' });
             onSaved();
             onClose();
         } else {
-            addToast({ type: 'error', title: 'Hata', message: result.error ?? 'Makale eklenemedi.' });
+            addToast({ type: 'error', title: 'Hata', message: result.error ?? 'İşlem başarısız.' });
         }
     };
 
@@ -69,7 +80,7 @@ function AddArticleModal({ onClose, onSaved }: AddArticleModalProps) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-5)' }}>
                     <h2 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>
                         <FileText size={18} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
-                        Yeni Makale Ekle
+                        {initialData ? 'Makaleyi Düzenle' : 'Yeni Makale Ekle'}
                     </h2>
                     <button className="btn btn-ghost btn-sm" onClick={onClose}>
                         <X size={16} />
@@ -126,7 +137,7 @@ function AddArticleModal({ onClose, onSaved }: AddArticleModalProps) {
                         <button type="button" className="btn btn-secondary" onClick={onClose}>İptal</button>
                         <button type="submit" className="btn btn-primary" disabled={saving}>
                             {saving ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
-                            Makaleyi Kaydet
+                            {initialData ? 'Güncelle' : 'Makaleyi Kaydet'}
                         </button>
                     </div>
                 </form>
@@ -146,7 +157,8 @@ export default function KnowledgeBasePage() {
 
     const [search, setSearch] = useState('');
     const [category, setCategory] = useState('all');
-    const [showAddModal, setShowAddModal] = useState(false);
+    const [modalMode, setModalMode] = useState<'add'|'edit'|null>(null);
+    const [editTarget, setEditTarget] = useState<any>(null);
 
     const canManage = currentUser?.role === 'admin' || currentUser?.role === 'agent';
 
@@ -185,7 +197,7 @@ export default function KnowledgeBasePage() {
                     </p>
                 </div>
                 {canManage && (
-                    <button className="btn btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
+                    <button className="btn btn-primary btn-sm" onClick={() => { setEditTarget(null); setModalMode('add'); }}>
                         <Plus size={14} /> Makale Ekle
                     </button>
                 )}
@@ -255,7 +267,7 @@ export default function KnowledgeBasePage() {
                                     <button
                                         className="btn-icon"
                                         style={{ color: 'var(--info)' }}
-                                        onClick={e => { e.stopPropagation(); addToast({type: 'info', title: 'Bilgi', message: 'Makale düzenleme yakında eklenecek.'}); }}
+                                        onClick={e => { e.stopPropagation(); setEditTarget(article); setModalMode('edit'); }}
                                         title="Makaleyi Düzenle"
                                     >
                                         <Pencil size={15} />
@@ -307,10 +319,10 @@ export default function KnowledgeBasePage() {
                 </div>
             )}
 
-            {/* ── Yeni Makale Modalı ── */}
-            {showAddModal && (
+            {modalMode && (
                 <AddArticleModal
-                    onClose={() => setShowAddModal(false)}
+                    initialData={editTarget}
+                    onClose={() => setModalMode(null)}
                     onSaved={refreshArticles}
                 />
             )}
