@@ -52,14 +52,64 @@ class AuthController {
         );
         $stmt->execute([$userId, $name, $email, $passwordHash, $department, $verificationCode]);
 
-        // Gerçek uygulamada burada e-posta gönderilir.
-        // Geliştirme ortamında kodu response'a da dönebiliriz (sadece test için):
-        echo json_encode([
-            'userId'           => $userId,
-            'message'          => 'Kayıt başarılı. E-posta doğrulama kodunuzu girin.',
-            // Geliştirme kolaylığı: Gerçek mailde bu satır olmamalı
-            '_dev_code'        => $verificationCode,
-        ]);
+        // Gerçek mail gönderme işlemi (PHPMailer ile)
+        try {
+            require_once __DIR__ . '/../lib/PHPMailer/Exception.php';
+            require_once __DIR__ . '/../lib/PHPMailer/PHPMailer.php';
+            require_once __DIR__ . '/../lib/PHPMailer/SMTP.php';
+
+            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+
+            // Vercel env var'larına bak, yoksa fallback değerleri kullan (env.local'deki bilgiler)
+            $mailHost = getenv('MAIL_HOST') ?: 'smtp.gmail.com';
+            $mailPort = getenv('MAIL_PORT') ?: 587;
+            $mailUser = getenv('MAIL_USER') ?: 'aydinerit@gmail.com';
+            $mailPass = getenv('MAIL_PASS') ?: 'bhhlfpeldriwrsbs';
+
+            $mail->isSMTP();
+            $mail->Host       = $mailHost;
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $mailUser;
+            $mail->Password   = $mailPass;
+            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = $mailPort;
+            $mail->CharSet    = 'UTF-8';
+
+            $mail->setFrom($mailUser, 'FixIT Destek Merkezi');
+            $mail->addAddress($email, $name);
+
+            $mail->isHTML(true);
+            $mail->Subject = 'Hesap Doğrulama Kodu - FixIT Destek Merkezi';
+            
+            // HTML Mail İçeriği (Şık ve modern tasarım)
+            $mail->Body = "
+            <div style='font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; text-align: center;'>
+                <h2 style='color: #f59e0b;'>FixIT Destek Merkezi</h2>
+                <p style='color: #555; font-size: 16px;'>Merhaba <strong>{$name}</strong>,</p>
+                <p style='color: #555; font-size: 14px;'>Hesabınızı doğrulamak için aşağıdaki 6 haneli kodu kullanabilirsiniz:</p>
+                <div style='background: #fef3c7; padding: 15px; margin: 20px 0; border-radius: 6px; font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #d97706;'>
+                    {$verificationCode}
+                </div>
+                <p style='color: #999; font-size: 12px;'>Bu kodun süresi 30 dakika içinde dolacaktır.</p>
+                <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;' />
+                <p style='color: #aaa; font-size: 10px;'>FixIT v2.0 &copy; " . date('Y') . "</p>
+            </div>
+            ";
+
+            $mail->send();
+            
+            echo json_encode([
+                'userId'           => $userId,
+                'message'          => 'Kayıt başarılı. E-posta doğrulama kodunuz gönderildi.',
+            ]);
+        } catch (Exception $e) {
+            // E-posta gönderilemezse bile kullanıcı oluşturuldu, bunu loglayıp frontend'e bilgi verelim
+            echo json_encode([
+                'userId'           => $userId,
+                'message'          => 'Kayıt başarılı ancak e-posta gönderilemedi. Lütfen IT departmanına başvurun.',
+                'error'            => $mail->ErrorInfo
+            ]);
+        }
     }
 
     // E-posta doğrulama
