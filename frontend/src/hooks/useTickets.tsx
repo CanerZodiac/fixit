@@ -30,27 +30,6 @@ interface TicketContextType {
 
 const TicketContext = createContext<TicketContextType | null>(null);
 
-const STORAGE_KEY = 'fixit_tickets';
-const DATA_VERSION = 'tickets_v2';
-
-function loadTickets(): Ticket[] {
-    const ver = localStorage.getItem('tickets_data_version');
-    if (ver !== DATA_VERSION) {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.setItem('tickets_data_version', DATA_VERSION);
-    }
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-        try { return JSON.parse(stored); } catch { /* fall through */ }
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mockTickets));
-    return [...mockTickets];
-}
-
-function saveTickets(tickets: Ticket[]) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
-}
-
 export function TicketProvider({ children }: { children: ReactNode }) {
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
@@ -58,193 +37,118 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const { addToast } = useToast();
 
     const refreshTickets = useCallback(async () => {
-        setTickets(loadTickets());
-        setLoading(false);
+        try {
+            const res = await fetch('/api/tickets');
+            if (res.ok) {
+                const data = await res.json();
+                setTickets(data);
+            }
+        } catch (e) {
+            console.error('Biletler yüklenemedi:', e);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
-    useEffect(() => { refreshTickets(); }, [refreshTickets]);
+    useEffect(() => {
+        refreshTickets();
+    }, [refreshTickets]);
 
     const addTicket = useCallback(async (data: { title: string; description: string; category: TicketCategory; priority: TicketPriority }): Promise<Ticket> => {
-        const current = loadTickets();
-        const maxNum = current.reduce((max, t) => {
-            const n = parseInt(t.id.replace('TKT-', ''), 10);
-            return n > max ? n : max;
-        }, 1000);
-        const id = `TKT-${maxNum + 1}`;
-        const now = new Date().toISOString();
-        const slaHours: Record<string, number> = { critical: 4, high: 8, medium: 24, low: 48 };
-        const slaDeadline = new Date(Date.now() + (slaHours[data.priority] ?? 24) * 3600000).toISOString();
-
-        const ticket: Ticket = {
-            id,
-            title: data.title,
-            description: data.description,
-            category: data.category,
-            priority: data.priority,
-            status: 'open',
-            createdBy: currentUser?.id ?? '',
-            createdByName: currentUser?.name ?? '',
-            assignedTo: null,
-            assignedToName: null,
-            createdAt: now,
-            updatedAt: now,
-            resolvedAt: null,
-            slaDeadline,
-            tags: [],
-            messages: [],
-            events: [{
-                id: `e-${Date.now()}`,
-                ticketId: id,
-                type: 'created',
-                description: 'Bilet oluşturuldu',
-                userId: currentUser?.id ?? '',
-                userName: currentUser?.name ?? '',
-                timestamp: now,
-            }],
-        };
-
-        const updated = [ticket, ...current];
-        saveTickets(updated);
-        setTickets(updated);
-        
-        // Yeni bilet oluşturulunca sisteme (FixIT admin hesabına) mail düşsün
-        triggerMail(ticket, 'created', currentUser?.name ?? 'Sistem', 'admin@fixit.com', 'Sistem Yöneticisi');
-        
-        addToast({ title: 'Bilet oluşturuldu', message: `${ticket.id} başarıyla kaydedildi.`, type: 'success' });
-        return ticket;
-    }, [currentUser, addToast]);
+        try {
+            const res = await fetch('/api/tickets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...data, createdBy: currentUser?.id, createdByName: currentUser?.name })
+            });
+            const result = await res.json();
+            
+            if (res.ok && result.success) {
+                await refreshTickets();
+                const newTicket = tickets.find(t => t.id === result.id) || { id: result.id, title: data.title } as Ticket;
+                triggerMail(newTicket, 'created', currentUser?.name ?? 'Sistem', 'admin@fixit.com', 'Sistem Yöneticisi');
+                addToast({ title: 'Bilet oluşturuldu', message: `${result.id} başarıyla kaydedildi.`, type: 'success' });
+                return newTicket;
+            }
+            throw new Error('Oluşturulamadı');
+        } catch (e) {
+            addToast({ title: 'Hata', message: 'Bilet oluşturulamadı.', type: 'error' });
+            throw e;
+        }
+    }, [currentUser, addToast, refreshTickets, tickets]);
 
     const updateTicketStatus = useCallback(async (ticketId: string, newStatus: TicketStatus) => {
-        const current = loadTickets();
-        const now = new Date().toISOString();
-        const updated = current.map(t => {
-            if (t.id !== ticketId) return t;
-            const oldStatus = t.status;
-            const desc = newStatus === 'resolved' ? 'Bilet çözüldü' : newStatus === 'closed' ? 'Bilet kapatıldı' : 'Durum değişti';
-            const event: TicketEvent = {
-                id: `e-${Date.now()}`,
-                ticketId,
-                type: newStatus === 'resolved' ? 'resolved' : 'status_changed',
-                description: desc,
-                userId: currentUser?.id ?? '',
-                userName: currentUser?.name ?? '',
-                timestamp: now,
-                oldValue: oldStatus,
-                newValue: newStatus,
-            };
-            return {
-                ...t,
-                status: newStatus,
-                updatedAt: now,
-                resolvedAt: (newStatus === 'resolved' || newStatus === 'closed') ? now : t.resolvedAt,
-                events: [...t.events, event],
-            };
-        });
-        saveTickets(updated);
-        setTickets(updated);
-        
-        // Bilet durumu değişince, bileti açan çalışana (createdBy) mail gitsin
         try {
-            const usersStr = localStorage.getItem('hud_registered_users');
-            if (usersStr) {
-                const users = JSON.parse(usersStr);
-                const creator = users.find((u: any) => u.id === current.find(t => t.id === ticketId)?.createdBy);
-                if (creator && creator.email) {
-                    const ticketRef = updated.find(t => t.id === ticketId);
-                    if (ticketRef) triggerMail(ticketRef, newStatus, currentUser?.name ?? 'Sistem', creator.email, creator.name);
-                }
+            const res = await fetch(`/api/tickets/${ticketId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (res.ok) {
+                await refreshTickets();
+                const statusLabels: Record<TicketStatus, string> = { open: 'Açık', in_progress: 'Devam Ediyor', waiting: 'Beklemede', resolved: 'Çözüldü', closed: 'Kapalı' };
+                addToast({ title: 'Durum güncellendi', message: `${ticketId} → ${statusLabels[newStatus]}`, type: 'success' });
             }
-        } catch(e) {}
-        
-        const statusLabels: Record<TicketStatus, string> = { open: 'Açık', in_progress: 'Devam Ediyor', waiting: 'Beklemede', resolved: 'Çözüldü', closed: 'Kapalı' };
-        addToast({ title: 'Durum güncellendi', message: `${ticketId} → ${statusLabels[newStatus]}`, type: 'success' });
-    }, [currentUser, addToast]);
+        } catch (e) {
+            addToast({ title: 'Hata', message: 'Durum güncellenemedi.', type: 'error' });
+        }
+    }, [addToast, refreshTickets]);
 
     const updateTicketPriority = useCallback(async (ticketId: string, newPriority: TicketPriority) => {
-        const current = loadTickets();
-        const now = new Date().toISOString();
-        const updated = current.map(t => {
-            if (t.id !== ticketId) return t;
-            const event: TicketEvent = {
-                id: `e-${Date.now()}`,
-                ticketId,
-                type: 'priority_changed' as any,
-                description: 'Öncelik değiştirildi',
-                userId: currentUser?.id ?? '',
-                userName: currentUser?.name ?? '',
-                timestamp: now,
-                oldValue: t.priority,
-                newValue: newPriority,
-            };
-            return {
-                ...t,
-                priority: newPriority,
-                updatedAt: now,
-                events: [...t.events, event],
-            };
-        });
-        saveTickets(updated);
-        setTickets(updated);
-        
-        const priorityLabels: Record<TicketPriority, string> = { critical: 'Kritik', high: 'Yüksek', medium: 'Orta', low: 'Düşük' };
-        addToast({ title: 'Öncelik güncellendi', message: `${ticketId} → ${priorityLabels[newPriority]}`, type: 'success' });
-    }, [currentUser, addToast]);
+        // Backend'de priority update endpoint'i eksikti ama genel update içinde yapılabilir veya status ile aynı mantıkta.
+        // Şimdilik sadece frontend update gibi davranalım, backend endpoint ekleyeceğiz.
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}/priority`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ priority: newPriority })
+            });
+            if (res.ok) {
+                await refreshTickets();
+                const priorityLabels: Record<TicketPriority, string> = { critical: 'Kritik', high: 'Yüksek', medium: 'Orta', low: 'Düşük' };
+                addToast({ title: 'Öncelik güncellendi', message: `${ticketId} → ${priorityLabels[newPriority]}`, type: 'success' });
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }, [addToast, refreshTickets]);
 
     const assignTicket = useCallback(async (ticketId: string, agentId: string, agentName: string) => {
-        const current = loadTickets();
-        const now = new Date().toISOString();
-        const updated = current.map(t => {
-            if (t.id !== ticketId) return t;
-            const event: TicketEvent = {
-                id: `e-${Date.now()}`,
-                ticketId,
-                type: 'assigned',
-                description: `${agentName}'e atandı`,
-                userId: currentUser?.id ?? '',
-                userName: currentUser?.name ?? '',
-                timestamp: now,
-            };
-            return { ...t, assignedTo: agentId, assignedToName: agentName, updatedAt: now, events: [...t.events, event] };
-        });
-        saveTickets(updated);
-        setTickets(updated);
-        
-        // Bilet bir uzmana atandığında o uzmana (agent) mail gitsin
         try {
-            const usersStr = localStorage.getItem('hud_registered_users');
-            if (usersStr) {
-                const users = JSON.parse(usersStr);
-                const agent = users.find((u: any) => u.id === agentId);
-                if (agent && agent.email) {
-                    const ticketRef = updated.find(t => t.id === ticketId);
-                    if (ticketRef) triggerMail(ticketRef, 'assigned', currentUser?.name ?? 'Sistem', agent.email, agent.name);
-                }
+            const res = await fetch(`/api/tickets/${ticketId}/assign`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agentId, agentName })
+            });
+            if (res.ok) {
+                await refreshTickets();
+                addToast({ title: 'Atama güncellendi', message: `${ticketId} → ${agentName}`, type: 'success' });
             }
-        } catch(e) {}
-        
-        addToast({ title: 'Atama güncellendi', message: `${ticketId} → ${agentName}`, type: 'success' });
-    }, [currentUser, addToast]);
+        } catch (e) {
+            addToast({ title: 'Hata', message: 'Atama güncellenemedi.', type: 'error' });
+        }
+    }, [addToast, refreshTickets]);
 
     const addMessage = useCallback(async (ticketId: string, content: string, isInternal = false) => {
-        const current = loadTickets();
-        const now = new Date().toISOString();
-        const msg: TicketMessage = {
-            id: `m-${Date.now()}`,
-            ticketId,
-            senderId: currentUser?.id ?? '',
-            senderName: currentUser?.name ?? '',
-            senderRole: (currentUser?.role ?? 'employee') as TicketMessage['senderRole'],
-            content,
-            timestamp: now,
-            isInternal,
-        };
-        const updated = current.map(t => {
-            if (t.id !== ticketId) return t;
-            return { ...t, messages: [...t.messages, msg], updatedAt: now };
-        });
-        saveTickets(updated);
-        setTickets(updated);
-    }, [currentUser]);
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    senderId: currentUser?.id,
+                    senderName: currentUser?.name,
+                    senderRole: currentUser?.role,
+                    content,
+                    isInternal
+                })
+            });
+            if (res.ok) {
+                await refreshTickets();
+            }
+        } catch (e) {
+            console.error('Mesaj eklenemedi:', e);
+        }
+    }, [currentUser, refreshTickets]);
 
     const getTicketById = useCallback((id: string) => tickets.find(t => t.id === id), [tickets]);
 

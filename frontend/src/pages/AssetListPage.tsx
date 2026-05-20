@@ -223,9 +223,9 @@ export default function AssetListPage() {
     const selectedAsset = selectedId ? assets.find(a => a.id === selectedId) ?? null : null;
     const editTarget = selectedAsset;
 
-    function handleSave(data: typeof EMPTY_FORM) {
+    async function handleSave(data: typeof EMPTY_FORM) {
         if (modalMode === 'add') {
-            const result = addAsset({
+            const result = await addAsset({
                 ...data,
                 assignedTo: data.assignedToName ? `u-${Date.now()}` : null,
             });
@@ -236,30 +236,30 @@ export default function AssetListPage() {
                 addToast({ title: 'Hata', message: result.error ?? 'Hata oluştu.', type: 'error' });
             }
         } else if (modalMode === 'edit' && selectedId) {
-            const result = updateAsset(selectedId, {
+            const result = await updateAsset(selectedId, {
                 ...data,
                 assignedTo: data.assignedToName ? (selectedAsset?.assignedTo ?? `u-${Date.now()}`) : null,
             });
             if (result.success) {
                 setModalMode(null);
-                addToast({ title: 'Başarılı', message: 'Cihaz güncellendi.', type: 'success' });
+                addToast({ title: 'Başarılı', message: 'Varlık güncellendi.', type: 'success' });
             } else {
-                addToast({ title: 'Hata', message: result.error ?? 'Hata oluştu.', type: 'error' });
+                addToast({ title: 'Hata', message: result.error || 'Güncellenemedi.', type: 'error' });
             }
         }
-    }
+    };
 
-    function handleDelete() {
+    const handleDeleteConfirm = async () => {
         if (!deleteTarget) return;
-        const result = deleteAsset(deleteTarget.id);
+        const result = await deleteAsset(deleteTarget.id);
         if (result.success) {
+            addToast({ title: 'Başarılı', message: 'Varlık silindi.', type: 'success' });
             setDeleteTarget(null);
             if (selectedId === deleteTarget.id) setSelectedId(null);
-            addToast({ title: 'Başarılı', message: 'Cihaz silindi.', type: 'success' });
         } else {
-            addToast({ title: 'Hata', message: result.error ?? 'Silinemedi.', type: 'error' });
+            addToast({ title: 'Hata', message: result.error || 'Silinemedi.', type: 'error' });
         }
-    }
+    };
 
     return (
         <div className="anim-fade-in-up">
@@ -421,7 +421,7 @@ export default function AssetListPage() {
             {deleteTarget && (
                 <DeleteConfirmModal
                     asset={deleteTarget}
-                    onConfirm={handleDelete}
+                    onConfirm={handleDeleteConfirm}
                     onClose={() => setDeleteTarget(null)}
                 />
             )}

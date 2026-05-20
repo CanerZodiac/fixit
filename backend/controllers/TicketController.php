@@ -105,4 +105,12 @@ class TicketController {
         $stmt->execute([$msgId, $id, $input['senderId'], $input['senderName'], $input['senderRole'], $input['content'], $input['isInternal'] ? 1 : 0]);
         echo json_encode(['success' => true]);
     }
+
+    // Biletin önceliğini (priority) güncellediğimiz yer.
+    public static function updatePriority($pdo, $id, $input) {
+        $priority = $input['priority'];
+        $stmt = $pdo->prepare("UPDATE tickets SET priority = ? WHERE id = ?");
+        $stmt->execute([$priority, $id]);
+        echo json_encode(['success' => true]);
+    }
 }

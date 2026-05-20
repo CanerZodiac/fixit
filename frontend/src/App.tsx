@@ -4,6 +4,7 @@ import { ToastProvider } from './hooks/useToast';
 import { TicketProvider } from './hooks/useTickets';
 import { UsersProvider } from './hooks/useUsers';
 import { AssetsProvider } from './hooks/useAssets';
+import { ArticlesProvider } from './hooks/useArticles';
 import { ThemeProvider } from './hooks/useTheme';
 import AppShell from './components/layout/AppShell';
 import LoginPage from './pages/LoginPage';
@@ -73,7 +74,9 @@ export default function App() {
             <TicketProvider>
               <UsersProvider>
                 <AssetsProvider>
-                  <AppRoutes />
+                  <ArticlesProvider>
+                    <AppRoutes />
+                  </ArticlesProvider>
                 </AssetsProvider>
               </UsersProvider>
             </TicketProvider>

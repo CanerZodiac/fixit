@@ -107,6 +107,8 @@ try {
         TicketController::assign($pdo, $matches[1], $input); // Bileti bir destek uzmanına ata
     } elseif (preg_match('#^/tickets/([^/]+)/messages$#', $request_uri, $matches) && $method === 'POST') {
         TicketController::addMessage($pdo, $matches[1], $input); // Bilete cevap / mesaj yaz
+    } elseif (preg_match('#^/tickets/([^/]+)/priority$#', $request_uri, $matches) && $method === 'PUT') {
+        TicketController::updatePriority($pdo, $matches[1], $input); // Öncelik güncelle
         
     // -- KULLANICI (USER) İŞLEMLERİ --
     } elseif (preg_match('#^/users$#', $request_uri) && $method === 'GET') {
@@ -125,8 +127,34 @@ try {
     // -- ENVANTER VE BİLGİ BANKASI --
     } elseif (preg_match('#^/assets$#', $request_uri) && $method === 'GET') {
         AssetController::getAll($pdo); // Bilgisayar, monitör gibi zimmetli eşyaları listele
+    } elseif (preg_match('#^/assets$#', $request_uri) && $method === 'POST') {
+        AssetController::create($pdo, $input); // Yeni envanter ekle
+    } elseif (preg_match('#^/assets/([^/]+)$#', $request_uri, $matches) && $method === 'PUT') {
+        AssetController::update($pdo, $matches[1], $input); // Envanter güncelle
+    } elseif (preg_match('#^/assets/([^/]+)$#', $request_uri, $matches) && $method === 'DELETE') {
+        AssetController::delete($pdo, $matches[1]); // Envanter sil
+    } elseif (preg_match('#^/assets/([^/]+)/status$#', $request_uri, $matches) && $method === 'PUT') {
+        AssetController::updateStatus($pdo, $matches[1], $input); // Durum güncelle
+    } elseif (preg_match('#^/assets/([^/]+)/assign$#', $request_uri, $matches) && $method === 'PUT') {
+        AssetController::assign($pdo, $matches[1], $input); // Zimmetle
+
+    // -- BİLGİ BANKASI (ARTICLES) --
+    } elseif (preg_match('#^/articles$#', $request_uri) && $method === 'GET') {
+        ArticleController::getAll($pdo); // Tüm makaleleri listele (?search=&category= destekli)
+    } elseif (preg_match('#^/articles$#', $request_uri) && $method === 'POST') {
+        ArticleController::create($pdo, $input); // Yeni makale ekle
+    } elseif (preg_match('#^/articles/search$#', $request_uri) && $method === 'GET') {
+        ArticleController::search($pdo, $_GET['q'] ?? ''); // Metin araması
     } elseif (preg_match('#^/articles/category/([^/]+)$#', $request_uri, $matches) && $method === 'GET') {
-        ArticleController::getByCategory($pdo, $matches[1]); // Bilgi bankası makalelerini getir
+        ArticleController::getByCategory($pdo, $matches[1]); // Kategoriye göre filtrele
+    } elseif (preg_match('#^/articles/([^/]+)/helpful$#', $request_uri, $matches) && $method === 'POST') {
+        ArticleController::markHelpful($pdo, $matches[1], $input); // Faydalı oyla
+    } elseif (preg_match('#^/articles/([^/]+)$#', $request_uri, $matches) && $method === 'GET') {
+        ArticleController::getById($pdo, $matches[1]); // Tek makale getir (views++)
+    } elseif (preg_match('#^/articles/([^/]+)$#', $request_uri, $matches) && $method === 'PUT') {
+        ArticleController::update($pdo, $matches[1], $input); // Makale güncelle
+    } elseif (preg_match('#^/articles/([^/]+)$#', $request_uri, $matches) && $method === 'DELETE') {
+        ArticleController::delete($pdo, $matches[1]); // Makale sil
         
     // -- YAPAY ZEKA VE İSTATİSTİKLER --
     } elseif (preg_match('#^/chat$#', $request_uri) && $method === 'POST') {
