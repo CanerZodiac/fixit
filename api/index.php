@@ -111,6 +111,14 @@ try {
     // -- KULLANICI (USER) İŞLEMLERİ --
     } elseif (preg_match('#^/users$#', $request_uri) && $method === 'GET') {
         UserController::getAll($pdo); // Tüm personelleri listele
+    } elseif (preg_match('#^/users$#', $request_uri) && $method === 'POST') {
+        UserController::create($pdo, $input); // Yeni kullanıcı ekle
+    } elseif (preg_match('#^/users/([^/]+)$#', $request_uri, $matches) && $method === 'PUT') {
+        UserController::update($pdo, $matches[1], $input); // Kullanıcı güncelle
+    } elseif (preg_match('#^/users/([^/]+)$#', $request_uri, $matches) && $method === 'DELETE') {
+        UserController::delete($pdo, $matches[1]); // Kullanıcı sil
+    } elseif (preg_match('#^/users/([^/]+)/status$#', $request_uri, $matches) && $method === 'PUT') {
+        UserController::toggleStatus($pdo, $matches[1], $input); // Durum değiştir (aktif/pasif)
     } elseif (preg_match('#^/users/role/([^/]+)$#', $request_uri, $matches) && $method === 'GET') {
         UserController::getByRole($pdo, $matches[1]); // Sadece belirli yetkideki (örn: agent) kullanıcıları getir
         

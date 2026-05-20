@@ -76,8 +76,8 @@ export default function UsersPage() {
         setModal('delete');
     };
 
-    const handleAdd = () => {
-        const result = addUser({
+    const handleAdd = async () => {
+        const result = await addUser({
             name: form.name, email: form.email, password: form.password,
             role: form.role, department: form.department,
             phone: form.phone || undefined, title: form.title || undefined,
@@ -90,9 +90,9 @@ export default function UsersPage() {
         }
     };
 
-    const handleEdit = () => {
+    const handleEdit = async () => {
         if (!selectedUserId) return;
-        const result = updateUser(selectedUserId, {
+        const result = await updateUser(selectedUserId, {
             name: form.name, email: form.email, role: form.role,
             department: form.department, phone: form.phone || undefined,
             title: form.title || undefined,
@@ -106,19 +106,21 @@ export default function UsersPage() {
         }
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!selectedUserId) return;
         const user = users.find(u => u.id === selectedUserId);
-        const result = deleteUser(selectedUserId);
+        const result = await deleteUser(selectedUserId);
         if (result.success) {
             addToast({ title: 'Kullanıcı silindi', message: `${user?.name || ''} kalıcı olarak silindi.`, type: 'success' });
             setModal(null);
+        } else {
+            addToast({ title: 'Hata', message: result.error || 'Silme işlemi başarısız.', type: 'error' });
         }
     };
 
-    const handleStatusToggle = (id: string, newStatus: UserStatus) => {
+    const handleStatusToggle = async (id: string, newStatus: UserStatus) => {
         const user = users.find(u => u.id === id);
-        toggleStatus(id, newStatus);
+        await toggleStatus(id, newStatus);
         addToast({
             title: 'Durum güncellendi',
             message: `${user?.name}: ${statusLabel[newStatus]}`,

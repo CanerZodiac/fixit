@@ -33,24 +33,34 @@ class AuthController {
         }
 
         // E-posta daha önce kayıtlı mı?
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt = $pdo->prepare("SELECT id, email_verified FROM users WHERE email = ?");
         $stmt->execute([$email]);
-        if ($stmt->fetch()) {
-            http_response_code(409);
-            echo json_encode(['error' => 'Bu e-posta adresi zaten kayıtlı.']);
-            return;
-        }
+        $existingUser = $stmt->fetch();
 
-        // Yeni kullanıcı oluştur
         $userId           = 'u-' . uniqid();
         $passwordHash     = password_hash($password, PASSWORD_BCRYPT);
         $verificationCode = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        $stmt = $pdo->prepare(
-            "INSERT INTO users (id, name, email, password_hash, role, department, status, email_verified, verification_code)
-             VALUES (?, ?, ?, ?, 'employee', ?, 'offline', 0, ?)"
-        );
-        $stmt->execute([$userId, $name, $email, $passwordHash, $department, $verificationCode]);
+        if ($existingUser) {
+            if ($existingUser['email_verified'] == 1) {
+                // Zaten onaylanmış bir hesap varsa, hata ver.
+                http_response_code(409);
+                echo json_encode(['error' => 'Bu e-posta adresi zaten kayıtlı ve doğrulanmış.']);
+                return;
+            } else {
+                // Onaylanmamışsa, kaydı güncelle (yeniden kod gönderilecek)
+                $userId = $existingUser['id']; // Eski ID'yi koru
+                $stmt = $pdo->prepare("UPDATE users SET name = ?, password_hash = ?, department = ?, verification_code = ?, status = 'offline' WHERE id = ?");
+                $stmt->execute([$name, $passwordHash, $department, $verificationCode, $userId]);
+            }
+        } else {
+            // Hiç yoksa yeni kullanıcı oluştur
+            $stmt = $pdo->prepare(
+                "INSERT INTO users (id, name, email, password_hash, role, department, status, email_verified, verification_code)
+                 VALUES (?, ?, ?, ?, 'employee', ?, 'offline', 0, ?)"
+            );
+            $stmt->execute([$userId, $name, $email, $passwordHash, $department, $verificationCode]);
+        }
 
         // Gerçek mail gönderme işlemi (PHPMailer ile)
         try {
